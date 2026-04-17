@@ -97,9 +97,10 @@ export default function Terminal() {
           const token = mapToken(ev);
           setTokens((prev) => [token, ...prev].slice(0, MAX_TOKENS));
         } else if (ev.txType === 'buy' || ev.txType === 'sell') {
-          // Trade on a watched token — update price + add activity
+          // Trade on a watched token — update price, market cap, liquidity, volume
           const newPrice = ev.vSolInBondingCurve / ev.vTokensInBondingCurve;
           const solToUsd = 150;
+          const tradeSolUsd = (ev.solAmount || 0) * solToUsd;
           setTokens((prev) =>
             prev.map((t) =>
               t.mint_address === ev.mint
@@ -107,8 +108,13 @@ export default function Terminal() {
                     ...t,
                     price: newPrice,
                     market_cap: (ev.marketCapSol || 0) * solToUsd,
+                    liquidity: ev.vSolInBondingCurve * solToUsd,
+                    volume_24h: (t.volume_24h || 0) + tradeSolUsd,
                     _prevPrice: t.price,
                     bonding_curve_progress: Math.min(100, (ev.vSolInBondingCurve / 85) * 100),
+                    price_change_5m: newPrice > t.price
+                      ? ((newPrice - t.price) / t.price) * 100
+                      : t.price_change_5m,
                   }
                 : t
             )

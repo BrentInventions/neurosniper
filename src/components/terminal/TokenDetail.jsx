@@ -1,20 +1,30 @@
-import React from 'react';
-import { ExternalLink, Copy, Flame } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, Copy, Flame, CandlestickChart } from 'lucide-react';
 import { toast } from 'sonner';
-import PriceChart from './PriceChart';
+import CandleChart from './CandleChart';
 import ActivityFeed from './ActivityFeed';
 import TradePanel from './TradePanel';
 import PriceFlash from './PriceFlash';
 import { formatUSD, formatPrice, formatPercent, formatAddress, formatNumber, timeAgo } from '@/lib/formatters';
 
-const Stat = ({ label, children }) => (
+const Stat = ({ label, value, rawValue, flash = false }) => (
   <div>
     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-    <div className="font-mono text-sm mt-0.5">{children}</div>
+    <div className="font-mono text-sm mt-0.5">
+      {flash ? <PriceFlash value={rawValue ?? value}>{value}</PriceFlash> : value}
+    </div>
   </div>
 );
 
+const BUCKET_OPTIONS = [
+  { label: '5s', ms: 5_000 },
+  { label: '10s', ms: 10_000 },
+  { label: '30s', ms: 30_000 },
+  { label: '1m', ms: 60_000 },
+];
+
 export default function TokenDetail({ token, chartData, activities, strategy }) {
+  const [bucketMs, setBucketMs] = useState(10_000);
   if (!token) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
@@ -79,12 +89,10 @@ export default function TokenDetail({ token, chartData, activities, strategy }) 
 
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t border-border/60">
-          <Stat label="Market Cap">
-            <PriceFlash value={token.market_cap}>{formatUSD(token.market_cap)}</PriceFlash>
-          </Stat>
-          <Stat label="Volume">{formatUSD(token.volume_24h)}</Stat>
-          <Stat label="Liquidity">{formatUSD(token.liquidity)}</Stat>
-          <Stat label="Holders">{formatNumber(token.holders, 0)}</Stat>
+          <Stat label="Market Cap" value={formatUSD(token.market_cap)} rawValue={token.market_cap} flash />
+          <Stat label="Volume" value={formatUSD(token.volume_24h)} rawValue={token.volume_24h} flash />
+          <Stat label="Liquidity" value={formatUSD(token.liquidity)} rawValue={token.liquidity} flash />
+          <Stat label="Holders" value={formatNumber(token.holders, 0)} />
         </div>
 
         {/* Bonding curve */}
@@ -132,11 +140,28 @@ export default function TokenDetail({ token, chartData, activities, strategy }) 
         {/* Chart */}
         <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0">
           <div className="flex items-center justify-between px-4 h-9 border-b border-border/60 bg-card/30">
-            <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Price Chart</span>
-            <span className="text-[10px] font-mono text-muted-foreground">{chartData?.length || 0} pts</span>
+            <div className="flex items-center gap-1.5">
+              <CandlestickChart className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Candles</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {BUCKET_OPTIONS.map((o) => (
+                <button
+                  key={o.ms}
+                  onClick={() => setBucketMs(o.ms)}
+                  className={`px-2 h-5 rounded text-[10px] font-mono transition-colors ${
+                    bucketMs === o.ms
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex-1 min-h-[200px]">
-            <PriceChart data={chartData} />
+            <CandleChart ticks={chartData} bucketMs={bucketMs} />
           </div>
           <div className="border-t border-border/60 h-48 flex flex-col">
             <div className="flex items-center px-4 h-9 border-b border-border/60 bg-card/30">
