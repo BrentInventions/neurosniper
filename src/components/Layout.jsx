@@ -1,12 +1,13 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Activity, Wallet, History, Settings, Zap, Radio } from 'lucide-react';
+import { Activity, Wallet, History, Settings, Zap, Radio, Bot } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Terminal', icon: Activity },
   { to: '/positions', label: 'Positions', icon: Wallet },
   { to: '/history', label: 'History', icon: History },
   { to: '/settings', label: 'Strategy', icon: Settings },
+  { to: '/research', label: 'Research', icon: Bot },
 ];
 
 export default function Layout() {

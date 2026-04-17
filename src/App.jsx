@@ -11,6 +11,7 @@ import Terminal from '@/pages/Terminal';
 import Positions from '@/pages/Positions';
 import History from '@/pages/History';
 import StrategySettings from '@/pages/StrategySettings';
+import ResearchBot from '@/pages/ResearchBot';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -39,6 +40,7 @@ const AuthenticatedApp = () => {
         <Route path="/positions" element={<Positions />} />
         <Route path="/history" element={<History />} />
         <Route path="/settings" element={<StrategySettings />} />
+        <Route path="/research" element={<ResearchBot />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
