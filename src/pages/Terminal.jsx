@@ -3,14 +3,54 @@ import { base44 } from '@/api/base44Client';
 import TokenFeed from '@/components/terminal/TokenFeed';
 import TokenDetail from '@/components/terminal/TokenDetail';
 import WalletCard from '@/components/terminal/WalletCard';
-import { generateMockToken, tickToken, generateActivity, generateChartPoint } from '@/lib/mockFeed';
+import { tickToken, generateActivity, generateChartPoint } from '@/lib/mockFeed';
 
 const MAX_TOKENS = 40;
 const MAX_CHART_POINTS = 60;
 const MAX_ACTIVITIES = 30;
+const WS_URL = 'wss://pumpportal.fun/api/data';
+
+// Map PumpPortal new-token event → our Token schema
+const mapToken = (ev) => {
+  const vSol = ev.vSolInBondingCurve || 30;
+  const vTokens = ev.vTokensInBondingCurve || 1_000_000_000;
+  const price = vSol / vTokens;
+  const marketCapSol = ev.marketCapSol || 0;
+  // approximate USD: assume 1 SOL ≈ $150 for display (no price oracle needed)
+  const solToUsd = 150;
+  return {
+    id: ev.mint || ev.signature,
+    name: ev.name || 'Unknown',
+    symbol: ev.symbol || '???',
+    mint_address: ev.mint || '',
+    price,
+    market_cap: marketCapSol * solToUsd,
+    volume_24h: (ev.solAmount || 0) * solToUsd,
+    liquidity: vSol * solToUsd,
+    holders: 1,
+    bonding_curve_progress: Math.min(100, (vSol / 85) * 100), // 85 SOL = graduation
+    launched_at: new Date().toISOString(),
+    is_trending: false,
+    price_change_5m: 0,
+    _vSol: vSol,
+    _vTokens: vTokens,
+    image_url: ev.uri || null,
+  };
+};
+
+// Map PumpPortal trade event → activity entry
+const mapActivity = (ev) => ({
+  id: ev.signature,
+  type: ev.txType === 'buy' ? 'buy' : 'sell',
+  amount_sol: ev.solAmount || 0,
+  price: ev.vSolInBondingCurve / ev.vTokensInBondingCurve || 0,
+  wallet: ev.traderPublicKey || '',
+  timestamp: new Date().toISOString(),
+});
 
 export default function Terminal() {
-  const [tokens, setTokens] = useState(() => Array.from({ length: 12 }, generateMockToken));
+  const [tokens, setTokens] = useState([]);
+  const [wsStatus, setWsStatus] = useState('connecting'); // connecting | live | error
   const [selectedId, setSelectedId] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -22,6 +62,7 @@ export default function Terminal() {
   });
 
   const selectedIdRef = useRef(selectedId);
+  const wsRef = useRef(null);
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
 
   // Load strategy
@@ -32,55 +73,89 @@ export default function Terminal() {
     })();
   }, []);
 
-  // Spawn new tokens periodically
+  // PumpPortal WebSocket — real-time new tokens
   useEffect(() => {
-    const t = setInterval(() => {
-      setTokens((prev) => [generateMockToken(), ...prev].slice(0, MAX_TOKENS));
-    }, 3500);
-    return () => clearInterval(t);
+    let ws;
+    let reconnectTimer;
+
+    const connect = () => {
+      setWsStatus('connecting');
+      ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setWsStatus('live');
+        ws.send(JSON.stringify({ method: 'subscribeNewToken' }));
+      };
+
+      ws.onmessage = (e) => {
+        const ev = JSON.parse(e.data);
+        if (!ev.mint) return; // skip ack/ping frames
+
+        if (ev.txType === 'create' || !ev.txType) {
+          // New token creation event
+          const token = mapToken(ev);
+          setTokens((prev) => [token, ...prev].slice(0, MAX_TOKENS));
+        } else if (ev.txType === 'buy' || ev.txType === 'sell') {
+          // Trade on a watched token — update price + add activity
+          const newPrice = ev.vSolInBondingCurve / ev.vTokensInBondingCurve;
+          const solToUsd = 150;
+          setTokens((prev) =>
+            prev.map((t) =>
+              t.mint_address === ev.mint
+                ? {
+                    ...t,
+                    price: newPrice,
+                    market_cap: (ev.marketCapSol || 0) * solToUsd,
+                    _prevPrice: t.price,
+                    bonding_curve_progress: Math.min(100, (ev.vSolInBondingCurve / 85) * 100),
+                  }
+                : t
+            )
+          );
+          if (ev.mint === selectedIdRef.current) {
+            const activity = mapActivity(ev);
+            setActivities((prev) => [activity, ...prev].slice(0, MAX_ACTIVITIES));
+            setChartData((prev) =>
+              [...prev, { time: Date.now(), price: newPrice }].slice(-MAX_CHART_POINTS)
+            );
+          }
+        }
+      };
+
+      ws.onerror = () => setWsStatus('error');
+
+      ws.onclose = () => {
+        setWsStatus('error');
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+    return () => {
+      clearTimeout(reconnectTimer);
+      ws?.close();
+    };
   }, []);
 
-  // Tick prices on all tokens
+  // When a token is selected, subscribe to its trades
   useEffect(() => {
-    const t = setInterval(() => {
-      setTokens((prev) => prev.map(tickToken));
-    }, 1200);
-    return () => clearInterval(t);
-  }, []);
-
-  // Feed chart + activities for selected
-  useEffect(() => {
-    if (!selectedId) return;
-    const t = setInterval(() => {
-      const current = tokens.find((x) => x.id === selectedIdRef.current);
-      if (!current) return;
-      setChartData((prev) => {
-        const last = prev[prev.length - 1]?.price || current.price;
-        const point = generateChartPoint(last);
-        return [...prev, point].slice(-MAX_CHART_POINTS);
-      });
-      if (Math.random() < 0.7) {
-        setActivities((prev) => [generateActivity(current), ...prev].slice(0, MAX_ACTIVITIES));
+    if (!selectedId || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({ method: 'subscribeTokenTrade', keys: [selectedId] }));
+    return () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ method: 'unsubscribeTokenTrade', keys: [selectedId] }));
       }
-    }, 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    };
   }, [selectedId]);
 
   const handleSelect = (token) => {
-    setSelectedId(token.id);
-    // Seed chart with a few points
-    const seed = [];
-    let p = token.price;
-    for (let i = 0; i < 20; i++) {
-      p = p * (1 + (Math.random() - 0.48) * 0.1);
-      seed.push({ time: Date.now() - (20 - i) * 1000, price: p });
-    }
-    setChartData(seed);
+    setSelectedId(token.mint_address);
+    setChartData([{ time: Date.now(), price: token.price }]);
     setActivities([]);
   };
 
-  const selected = tokens.find((t) => t.id === selectedId);
+  const selected = tokens.find((t) => t.mint_address === selectedId);
   const positionsCount = 3;
 
   return (
@@ -92,6 +167,7 @@ export default function Terminal() {
           balance={wallet.balance}
           pnl24h={wallet.pnl24h}
           positionsCount={positionsCount}
+          wsStatus={wsStatus}
         />
       </div>
 

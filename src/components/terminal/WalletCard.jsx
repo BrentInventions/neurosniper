@@ -3,7 +3,7 @@ import { Wallet, Copy, TrendingUp, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatSOL, formatAddress, formatPercent } from '@/lib/formatters';
 
-export default function WalletCard({ address, balance, pnl24h, positionsCount }) {
+export default function WalletCard({ address, balance, pnl24h, positionsCount, wsStatus }) {
   const isUp = (pnl24h || 0) >= 0;
   const copy = () => {
     navigator.clipboard.writeText(address);
@@ -28,9 +28,23 @@ export default function WalletCard({ address, balance, pnl24h, positionsCount })
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-1 px-2 h-6 rounded bg-primary/10 border border-primary/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary pulse-dot" />
-          <span className="text-[10px] font-mono text-primary uppercase tracking-wider">Connected</span>
+        <div className={`flex items-center gap-1 px-2 h-6 rounded border ${
+          wsStatus === 'live' ? 'bg-primary/10 border-primary/20' :
+          wsStatus === 'error' ? 'bg-destructive/10 border-destructive/20' :
+          'bg-secondary border-border'
+        }`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${
+            wsStatus === 'live' ? 'bg-primary pulse-dot' :
+            wsStatus === 'error' ? 'bg-destructive' :
+            'bg-muted-foreground animate-pulse'
+          }`} />
+          <span className={`text-[10px] font-mono uppercase tracking-wider ${
+            wsStatus === 'live' ? 'text-primary' :
+            wsStatus === 'error' ? 'text-destructive' :
+            'text-muted-foreground'
+          }`}>
+            {wsStatus === 'live' ? 'Live' : wsStatus === 'error' ? 'Reconnecting' : 'Connecting'}
+          </span>
         </div>
       </div>
 
