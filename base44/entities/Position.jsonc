@@ -1,0 +1,55 @@
+{
+  "name": "Position",
+  "type": "object",
+  "properties": {
+    "token_name": {
+      "type": "string"
+    },
+    "token_symbol": {
+      "type": "string"
+    },
+    "mint_address": {
+      "type": "string"
+    },
+    "entry_price": {
+      "type": "number"
+    },
+    "current_price": {
+      "type": "number"
+    },
+    "amount_sol": {
+      "type": "number"
+    },
+    "tokens_held": {
+      "type": "number"
+    },
+    "pnl_sol": {
+      "type": "number"
+    },
+    "pnl_percent": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed"
+      ],
+      "default": "open"
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "token_symbol",
+    "mint_address",
+    "entry_price",
+    "amount_sol"
+  ]
+}

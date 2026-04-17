@@ -1,0 +1,52 @@
+{
+  "name": "Token",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "mint_address": {
+      "type": "string"
+    },
+    "market_cap": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "volume_24h": {
+      "type": "number"
+    },
+    "liquidity": {
+      "type": "number"
+    },
+    "holders": {
+      "type": "number"
+    },
+    "bonding_curve_progress": {
+      "type": "number"
+    },
+    "launched_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "is_trending": {
+      "type": "boolean",
+      "default": false
+    },
+    "price_change_5m": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "name",
+    "symbol",
+    "mint_address"
+  ]
+}

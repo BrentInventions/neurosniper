@@ -1,0 +1,52 @@
+{
+  "name": "Trade",
+  "type": "object",
+  "properties": {
+    "token_symbol": {
+      "type": "string"
+    },
+    "mint_address": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "buy",
+        "sell"
+      ]
+    },
+    "amount_sol": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "tokens": {
+      "type": "number"
+    },
+    "tx_hash": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "success",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "pnl_sol": {
+      "type": "number"
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "token_symbol",
+    "type",
+    "amount_sol"
+  ]
+}

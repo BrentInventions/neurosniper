@@ -1,0 +1,62 @@
+{
+  "name": "Strategy",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "default": "Default Strategy"
+    },
+    "buy_amount_sol": {
+      "type": "number",
+      "default": 0.1
+    },
+    "auto_buy": {
+      "type": "boolean",
+      "default": false
+    },
+    "auto_sell": {
+      "type": "boolean",
+      "default": false
+    },
+    "take_profit_multiplier": {
+      "type": "number",
+      "default": 2
+    },
+    "stop_loss_percent": {
+      "type": "number",
+      "default": 30
+    },
+    "min_market_cap": {
+      "type": "number",
+      "default": 0
+    },
+    "max_market_cap": {
+      "type": "number",
+      "default": 1000000
+    },
+    "min_liquidity": {
+      "type": "number",
+      "default": 0
+    },
+    "max_token_age_seconds": {
+      "type": "number",
+      "default": 300
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "safe",
+        "aggressive",
+        "sniper"
+      ],
+      "default": "aggressive"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
